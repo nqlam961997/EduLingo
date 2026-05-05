@@ -7,31 +7,37 @@ const router = useRouter()
 const route  = useRoute()
 const setId  = route.params.setId as string
 
-const setDetail = ref<VocabularySetDetail | null>(null)
-const loading   = ref(true)
-const error     = ref('')
+const setDetail  = ref<VocabularySetDetail | null>(null)
+const loading    = ref(true)
+const error      = ref('')
+const toggling   = ref<Set<string>>(new Set())
 
-const masteredLocal = ref<Record<string, boolean>>({})
-
-const masteredCount = computed(() => {
-  if (!setDetail.value) return 0
-  return setDetail.value.words.filter(w => masteredLocal.value[w.id] ?? w.mastered).length
-})
+const masteredCount = computed(() =>
+  setDetail.value?.words.filter(w => w.mastered).length ?? 0
+)
 
 const progressPct = computed(() => {
-  if (!setDetail.value?.words.length) return 0
-  return Math.round((masteredCount.value / setDetail.value.words.length) * 100)
+  const total = setDetail.value?.words.length ?? 0
+  return total ? Math.round((masteredCount.value / total) * 100) : 0
 })
 
 async function onToggle(word: VocabularyWord) {
+  if (toggling.value.has(word.id)) return
+  toggling.value = new Set([...toggling.value, word.id])
+
+  const prev = word.mastered
+  word.mastered = !prev            // optimistic update
+
   try {
     const res = await toggleWordMastered(word.id)
-    masteredLocal.value[word.id] = res.mastered
-  } catch {}
-}
-
-function isMastered(word: VocabularyWord) {
-  return masteredLocal.value[word.id] ?? word.mastered
+    word.mastered = res.mastered   // confirm from server
+  } catch {
+    word.mastered = prev           // revert on error
+  } finally {
+    const next = new Set(toggling.value)
+    next.delete(word.id)
+    toggling.value = next
+  }
 }
 
 function speak(text: string) {
@@ -190,15 +196,18 @@ onMounted(async () => {
             <div class="col-span-1 flex justify-center">
               <button
                 @click="onToggle(word)"
+                :disabled="toggling.has(word.id)"
                 :class="[
-                  isMastered(word)
-                    ? 'bg-green-500 border-green-500 text-white'
-                    : 'bg-white border-slate-300 text-slate-400 hover:border-green-400',
+                  word.mastered
+                    ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                    : 'bg-white border-slate-300 text-slate-400 hover:border-green-400 hover:text-green-500',
+                  toggling.has(word.id) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                   'w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all text-xs font-bold'
                 ]"
-                :title="isMastered(word) ? 'Đã thuộc — click để bỏ' : 'Đánh dấu đã thuộc'"
+                :title="word.mastered ? 'Đã thuộc — click để bỏ' : 'Đánh dấu đã thuộc'"
               >
-                ✓
+                <span v-if="toggling.has(word.id)" class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                <span v-else>✓</span>
               </button>
             </div>
           </div>

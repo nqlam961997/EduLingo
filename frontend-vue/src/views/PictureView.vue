@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import TopicPicker from '../components/TopicPicker.vue'
 import {
   generatePicture, getPictureQuestions, submitPictureAnswer, recordSession,
@@ -93,6 +93,58 @@ function reset() {
 async function newRound() {
   if (selectedTopic.value) onTopic(selectedTopic.value)
 }
+
+// ── Voice input ───────────────────────────────────────────────────────────────
+const isRecording  = ref(false)
+const micError     = ref('')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let recognition: any = null
+
+function toggleVoiceInput() {
+  micError.value = ''
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  if (!SR) {
+    micError.value = 'Trình duyệt không hỗ trợ nhận giọng nói'
+    return
+  }
+
+  if (isRecording.value) {
+    recognition?.stop()
+    return
+  }
+
+  recognition = new SR()
+  recognition.lang = 'en-US'
+  recognition.continuous = false
+  recognition.interimResults = true
+  recognition.maxAlternatives = 1
+
+  recognition.onstart = () => { isRecording.value = true }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recognition.onresult = (event: any) => {
+    const transcript = Array.from(event.results as any[])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((r: any) => r[0].transcript)
+      .join('')
+    answer.value = transcript
+  }
+
+  recognition.onend = () => { isRecording.value = false; recognition = null }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recognition.onerror = (event: any) => {
+    isRecording.value = false
+    recognition = null
+    if (event.error !== 'aborted') micError.value = `Lỗi mic: ${event.error}`
+  }
+
+  recognition.start()
+}
+
+onUnmounted(() => recognition?.stop())
 </script>
 
 <template>
@@ -235,12 +287,22 @@ async function newRound() {
                 class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
                 @keydown.enter.ctrl="submitAnswer" />
 
+              <!-- Mic error -->
+              <p v-if="micError" class="text-xs text-red-500">{{ micError }}</p>
+
               <div class="flex items-center gap-2">
-                <!-- Mic button (cosmetic for now) -->
+                <!-- Mic button -->
                 <button
-                  class="w-11 h-11 rounded-full bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center shadow transition"
-                  title="Voice input (coming soon)">
-                  🎤
+                  @click="toggleVoiceInput"
+                  :class="[
+                    isRecording
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse ring-2 ring-red-300'
+                      : 'bg-pink-500 hover:bg-pink-600',
+                    'w-11 h-11 rounded-full text-white flex items-center justify-center shadow transition'
+                  ]"
+                  :title="isRecording ? 'Đang nghe — nhấn để dừng' : 'Nhấn để nói tiếng Anh'"
+                >
+                  {{ isRecording ? '⏹' : '🎤' }}
                 </button>
 
                 <!-- Submit button -->

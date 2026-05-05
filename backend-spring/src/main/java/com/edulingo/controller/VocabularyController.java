@@ -5,10 +5,11 @@ import com.edulingo.entity.UserWordProgress;
 import com.edulingo.entity.Vocabulary;
 import com.edulingo.entity.WordSet;
 import com.edulingo.repository.*;
+import com.edulingo.security.SecurityUtils;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
 import java.util.*;
@@ -17,84 +18,88 @@ import java.util.*;
 @RequestMapping("/api/vocabulary")
 public class VocabularyController {
 
-    private final WordSetRepository         wordSetRepo;
-    private final VocabularyRepository      vocabRepo;
+    private final WordSetRepository          wordSetRepo;
+    private final VocabularyRepository       vocabRepo;
     private final UserWordProgressRepository progressRepo;
-    private final UserRepository            userRepo;
+    private final UserRepository             userRepo;
+    private final SecurityUtils              security;
 
     public VocabularyController(WordSetRepository wordSetRepo,
                                 VocabularyRepository vocabRepo,
                                 UserWordProgressRepository progressRepo,
-                                UserRepository userRepo) {
+                                UserRepository userRepo,
+                                SecurityUtils security) {
         this.wordSetRepo  = wordSetRepo;
         this.vocabRepo    = vocabRepo;
         this.progressRepo = progressRepo;
         this.userRepo     = userRepo;
+        this.security     = security;
     }
 
     // ── GET /api/vocabulary/levels ───────────────────────────────────────────
     @GetMapping("/levels")
-    public List<Map<String, Object>> getLevels(@AuthenticationPrincipal UserDetails principal) {
-        User user = resolveUser(principal);
-        List<String> levels = wordSetRepo.findDistinctLevels();
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (String level : levels) {
-            long setCount    = wordSetRepo.countByLevel(level);
-            long totalWords  = vocabRepo.countByLevel(level);
-            long mastered    = user != null ? progressRepo.countMasteredInLevel(user.getId(), level) : 0;
-            int  difficulty  = levelDifficulty(level);
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("level",      level);
-            item.put("setCount",   setCount);
-            item.put("totalWords", totalWords);
-            item.put("mastered",   mastered);
-            item.put("difficulty", difficulty);
-            result.add(item);
-        }
-        return result;
+    public Mono<List<Map<String, Object>>> getLevels() {
+        return withOptionalUser(user ->
+            Mono.fromCallable(() -> {
+                List<String> levels = wordSetRepo.findDistinctLevels();
+                List<Map<String, Object>> result = new ArrayList<>();
+                for (String level : levels) {
+                    long mastered = user != null ? progressRepo.countMasteredInLevel(user.getId(), level) : 0;
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("level",      level);
+                    item.put("setCount",   wordSetRepo.countByLevel(level));
+                    item.put("totalWords", vocabRepo.countByLevel(level));
+                    item.put("mastered",   mastered);
+                    item.put("difficulty", levelDifficulty(level));
+                    result.add(item);
+                }
+                return result;
+            }).subscribeOn(Schedulers.boundedElastic())
+        );
     }
 
     // ── GET /api/vocabulary/levels/{level}/sets ──────────────────────────────
     @GetMapping("/levels/{level}/sets")
-    public List<Map<String, Object>> getSets(@PathVariable String level,
-                                             @AuthenticationPrincipal UserDetails principal) {
-        User user = resolveUser(principal);
-        List<WordSet> sets = wordSetRepo.findByCefrLevelOrderByDisplayOrderAsc(level.toUpperCase());
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (WordSet ws : sets) {
-            long total    = vocabRepo.countByWordSetId(ws.getId());
-            long mastered = user != null ? progressRepo.countMasteredInSet(user.getId(), ws.getId()) : 0;
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id",          ws.getId());
-            item.put("name",        ws.getName());
-            item.put("description", ws.getDescription());
-            item.put("cefrLevel",   ws.getCefrLevel());
-            item.put("difficulty",  ws.getDifficulty());
-            item.put("totalWords",  total);
-            item.put("mastered",    mastered);
-            result.add(item);
-        }
-        return result;
+    public Mono<List<Map<String, Object>>> getSets(@PathVariable String level) {
+        return withOptionalUser(user ->
+            Mono.fromCallable(() -> {
+                List<WordSet> sets = wordSetRepo.findByCefrLevelOrderByDisplayOrderAsc(level.toUpperCase());
+                List<Map<String, Object>> result = new ArrayList<>();
+                for (WordSet ws : sets) {
+                    long mastered = user != null ? progressRepo.countMasteredInSet(user.getId(), ws.getId()) : 0;
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("id",          ws.getId());
+                    item.put("name",        ws.getName());
+                    item.put("description", ws.getDescription());
+                    item.put("cefrLevel",   ws.getCefrLevel());
+                    item.put("difficulty",  ws.getDifficulty());
+                    item.put("totalWords",  vocabRepo.countByWordSetId(ws.getId()));
+                    item.put("mastered",    mastered);
+                    result.add(item);
+                }
+                return result;
+            }).subscribeOn(Schedulers.boundedElastic())
+        );
     }
 
     // ── GET /api/vocabulary/sets/{setId} ─────────────────────────────────────
     @GetMapping("/sets/{setId}")
-    public ResponseEntity<Map<String, Object>> getSet(@PathVariable UUID setId,
-                                                      @AuthenticationPrincipal UserDetails principal) {
+    public Mono<ResponseEntity<Map<String, Object>>> getSet(@PathVariable UUID setId) {
+        return this.<ResponseEntity<Map<String, Object>>>withOptionalUser(user ->
+            Mono.fromCallable(() -> buildSetResponse(setId, user))
+                .subscribeOn(Schedulers.boundedElastic())
+        );
+    }
+
+    private ResponseEntity<Map<String, Object>> buildSetResponse(UUID setId, User user) {
         WordSet ws = wordSetRepo.findById(setId).orElse(null);
         if (ws == null) return ResponseEntity.notFound().build();
 
-        User user = resolveUser(principal);
         List<Vocabulary> words = vocabRepo.findByWordSetIdOrderByDisplayOrderAsc(setId);
-
         Set<UUID> masteredIds = Collections.emptySet();
         if (user != null && !words.isEmpty()) {
-            masteredIds = progressRepo.findMasteredVocabIds(user.getId(),
-                    words.stream().map(Vocabulary::getId).toList());
+            masteredIds = progressRepo.findMasteredVocabIds(
+                    user.getId(), words.stream().map(Vocabulary::getId).toList());
         }
 
         List<Map<String, Object>> wordList = new ArrayList<>();
@@ -123,18 +128,23 @@ public class VocabularyController {
 
     // ── POST /api/vocabulary/words/{wordId}/toggle ───────────────────────────
     @PostMapping("/words/{wordId}/toggle")
-    public ResponseEntity<Map<String, Object>> toggleMastered(
-            @PathVariable UUID wordId,
-            @AuthenticationPrincipal UserDetails principal) {
+    public Mono<ResponseEntity<Map<String, Object>>> toggleMastered(@PathVariable UUID wordId) {
+        return security.currentUserId()
+                .flatMap(uid -> Mono.fromCallable(() -> doToggle(uid, wordId))
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .switchIfEmpty(Mono.just(ResponseEntity.status(401).<Map<String, Object>>build()))
+                .onErrorReturn(ResponseEntity.status(401).<Map<String, Object>>build());
+    }
 
-        User user = resolveUser(principal);
+    private ResponseEntity<Map<String, Object>> doToggle(UUID userId, UUID wordId) {
+        User user = userRepo.findById(userId).orElse(null);
         if (user == null) return ResponseEntity.status(401).build();
 
         Vocabulary vocab = vocabRepo.findById(wordId).orElse(null);
         if (vocab == null) return ResponseEntity.notFound().build();
 
         UserWordProgress prog = progressRepo
-                .findByUserIdAndVocabularyId(user.getId(), wordId)
+                .findByUserIdAndVocabularyId(userId, wordId)
                 .orElseGet(() -> {
                     UserWordProgress p = new UserWordProgress();
                     p.setUser(user);
@@ -146,18 +156,25 @@ public class VocabularyController {
         prog.setUpdatedAt(Instant.now());
         progressRepo.save(prog);
 
-        Map<String, Object> resp = Map.of(
+        return ResponseEntity.ok(Map.of(
                 "wordId",   wordId,
                 "mastered", prog.isMastered()
-        );
-        return ResponseEntity.ok(resp);
+        ));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private User resolveUser(UserDetails principal) {
-        if (principal == null) return null;
-        return userRepo.findByEmail(principal.getUsername()).orElse(null);
+    /**
+     * Lấy user hiện tại (nullable) cho các endpoint đọc.
+     * Nếu không có token hoặc token lỗi → user = null (guest view).
+     */
+    private <T> Mono<T> withOptionalUser(java.util.function.Function<User, Mono<T>> fn) {
+        return security.currentUserId()
+                .onErrorResume(e -> Mono.empty())
+                .flatMap(uid -> Mono.fromCallable(() -> userRepo.findById(uid).orElse(null))
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .flatMap(fn)
+                .switchIfEmpty(Mono.defer(() -> fn.apply(null)));
     }
 
     private int levelDifficulty(String level) {

@@ -77,7 +77,7 @@ function logout() {
         <button @click="logout" class="text-sm text-red-500 hover:text-red-700 transition">Logout</button>
       </div>
     </header>
-    <main class="flex-1 overflow-hidden">
+    <main class="flex-1 overflow-y-auto">
       <RouterView />
     </main>
   </div>

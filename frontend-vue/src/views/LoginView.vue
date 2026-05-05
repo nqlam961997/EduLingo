@@ -22,7 +22,7 @@ async function submit() {
       ? await register(email.value, fullName.value, password.value)
       : await login(email.value, password.value)
     auth.setUser(resp)
-    router.push('/chat')
+    router.push('/dashboard')
   } catch (e) {
     error.value = (e as Error).message
   } finally {
