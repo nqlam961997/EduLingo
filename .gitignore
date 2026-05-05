@@ -1,0 +1,89 @@
+# ── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SPRING BOOT (backend-spring)
+# ══════════════════════════════════════════════════════════════════════════════
+backend-spring/target/
+backend-spring/.mvn/wrapper/maven-wrapper.jar
+backend-spring/mvnw
+backend-spring/mvnw.cmd
+
+# compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+
+# Spring Boot packaged jar
+*.jar
+*.war
+*.ear
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PYTHON (backend-python)
+# ══════════════════════════════════════════════════════════════════════════════
+backend-python/__pycache__/
+backend-python/*.py[cod]
+backend-python/*$py.class
+backend-python/.venv/
+backend-python/venv/
+backend-python/env/
+backend-python/.env
+
+# Python distribution / packaging
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+.Python
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VUE / NODE (frontend-vue)
+# ══════════════════════════════════════════════════════════════════════════════
+frontend-vue/node_modules/
+frontend-vue/dist/
+frontend-vue/.vite/
+
+# Vite cache
+frontend-vue/.cache/
+
+# env files (chứa API key, secrets)
+frontend-vue/.env
+frontend-vue/.env.local
+frontend-vue/.env.*.local
+
+# TypeScript build info
+frontend-vue/*.tsbuildinfo
+
+# ── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.secret
+secrets/
+
+# ── Database ─────────────────────────────────────────────────────────────────
+*.sql.bak
+dump.sql
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+Thumbs.db
