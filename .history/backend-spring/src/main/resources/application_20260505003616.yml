@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: edulingo-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/edulingo}
+    username: ${DB_USER:edulingo}
+    password: ${DB_PASSWORD:edulingo}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  codec:
+    max-in-memory-size: 16MB
+
+gemini:
+  api-key: ${GEMINI_API_KEY:AIzaSyB3T-ABtU0Hp7EqRdSKJCU9VMelVqQlvT4}
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+  model: ${GEMINI_MODEL:gemini-1.5-flash}
+  image-model: ${GEMINI_IMAGE_MODEL:gemini-2.0-flash-exp}
+
+jwt:
+  secret: ${JWT_SECRET:c2VjcmV0LWtleS1mb3ItZWR1bGluZ28tZGVtby1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
+  expiration-ms: ${JWT_EXPIRATION:86400000}
+
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}

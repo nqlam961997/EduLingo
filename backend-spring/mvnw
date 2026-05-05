@@ -1,0 +1,59 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+# Apache Maven Wrapper startup batch script, version 3.2.0
+# ----------------------------------------------------------------------------
+
+# If JAVA_HOME is not set, try to find it
+if [ -z "$JAVA_HOME" ]; then
+  if [ -x "/usr/libexec/java_home" ]; then
+    export JAVA_HOME=$(/usr/libexec/java_home)
+  fi
+fi
+
+# Resolve the Maven home
+MAVEN_PROJECTBASEDIR="${MAVEN_BASEDIR:-$(pwd)}"
+while [ ! -f "$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.properties" ]; do
+  PARENT=$(dirname "$MAVEN_PROJECTBASEDIR")
+  if [ "$PARENT" = "$MAVEN_PROJECTBASEDIR" ]; then
+    break
+  fi
+  MAVEN_PROJECTBASEDIR="$PARENT"
+done
+
+# Read the distribution URL from the properties file
+MAVEN_WRAPPER_PROPERTIES="$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.properties"
+DISTRIBUTION_URL=$(grep "distributionUrl" "$MAVEN_WRAPPER_PROPERTIES" | sed 's/distributionUrl=//')
+
+# Check if mvn is available in PATH or a known location
+MVN_CMD=""
+if command -v mvn > /dev/null 2>&1; then
+  MVN_CMD="mvn"
+elif [ -x "/Users/hopee/Documents/cis/env/maven/apache-maven-3.9.6/bin/mvn" ]; then
+  MVN_CMD="/Users/hopee/Documents/cis/env/maven/apache-maven-3.9.6/bin/mvn"
+fi
+
+if [ -n "$MVN_CMD" ]; then
+  exec "$MVN_CMD" "$@"
+else
+  echo "Error: Maven not found. Please install Maven or set PATH correctly."
+  exit 1
+fi

@@ -1,0 +1,282 @@
+{
+  "A1": {
+    "targetLevel": "A2",
+    "description": "Kiểm tra nền tảng cơ bản: từ vựng hàng ngày, thì hiện tại và quá khứ đơn",
+    "questions": [
+      {
+        "id": 1, "question": "She __ a teacher at a primary school.",
+        "options": ["am", "is", "are", "be"],
+        "correct": 1, "explanation": "Chủ ngữ 'She' (ngôi 3 số ít) dùng động từ 'is'."
+      },
+      {
+        "id": 2, "question": "I __ to school every day by bus.",
+        "options": ["go", "goes", "going", "gone"],
+        "correct": 0, "explanation": "Chủ ngữ 'I' dùng động từ nguyên mẫu 'go' ở hiện tại đơn."
+      },
+      {
+        "id": 3, "question": "There are __ apples on the table.",
+        "options": ["a", "an", "some", "much"],
+        "correct": 2, "explanation": "'Some' dùng với danh từ đếm được số nhiều."
+      },
+      {
+        "id": 4, "question": "What time __ you wake up this morning?",
+        "options": ["do", "did", "does", "are"],
+        "correct": 1, "explanation": "'Did' là trợ động từ quá khứ, dùng để hỏi về sự kiện đã xảy ra."
+      },
+      {
+        "id": 5, "question": "He __ at home yesterday because he was sick.",
+        "options": ["stay", "stays", "stayed", "staying"],
+        "correct": 2, "explanation": "Sự kiện xảy ra hôm qua (yesterday) dùng thì quá khứ đơn '-ed'."
+      },
+      {
+        "id": 6, "question": "Can you pass me __ water, please?",
+        "options": ["a", "an", "some", "many"],
+        "correct": 2, "explanation": "'Water' là danh từ không đếm được, dùng 'some'."
+      },
+      {
+        "id": 7, "question": "My brother __ basketball very well.",
+        "options": ["play", "plays", "played", "playing"],
+        "correct": 1, "explanation": "Hiện tại đơn ngôi 3 số ít thêm '-s': plays."
+      },
+      {
+        "id": 8, "question": "This is __ umbrella. It belongs to my sister.",
+        "options": ["a", "an", "the", "some"],
+        "correct": 1, "explanation": "'Umbrella' bắt đầu bằng nguyên âm /ʌ/ nên dùng 'an'."
+      },
+      {
+        "id": 9, "question": "They __ at the restaurant right now.",
+        "options": ["eat", "eats", "are eating", "ate"],
+        "correct": 2, "explanation": "'Right now' chỉ hành động đang xảy ra → hiện tại tiếp diễn."
+      },
+      {
+        "id": 10, "question": "I __ my keys. I can't find them anywhere!",
+        "options": ["lose", "lost", "am losing", "have lost"],
+        "correct": 3, "explanation": "'Have lost' (hiện tại hoàn thành) diễn tả kết quả ảnh hưởng đến hiện tại."
+      }
+    ]
+  },
+  "A2": {
+    "targetLevel": "B1",
+    "description": "Kiểm tra hiện tại hoàn thành, so sánh, động từ khuyết thiếu và câu điều kiện loại 1",
+    "questions": [
+      {
+        "id": 1, "question": "I __ this movie three times already!",
+        "options": ["see", "saw", "have seen", "was seeing"],
+        "correct": 2, "explanation": "'Already' với kinh nghiệm → hiện tại hoàn thành 'have seen'."
+      },
+      {
+        "id": 2, "question": "She is __ than her older sister.",
+        "options": ["tall", "more tall", "taller", "tallest"],
+        "correct": 2, "explanation": "So sánh hơn của tính từ ngắn: thêm '-er'."
+      },
+      {
+        "id": 3, "question": "If it __ tomorrow, we will cancel the picnic.",
+        "options": ["rains", "rain", "rained", "will rain"],
+        "correct": 0, "explanation": "Câu điều kiện loại 1: if + hiện tại đơn, will + V nguyên mẫu."
+      },
+      {
+        "id": 4, "question": "You __ smoke here — it's a hospital.",
+        "options": ["don't have to", "mustn't", "needn't", "shouldn't"],
+        "correct": 1, "explanation": "'Mustn't' = cấm đoán tuyệt đối. 'Don't have to' = không bắt buộc."
+      },
+      {
+        "id": 5, "question": "She was cooking dinner when her husband __.",
+        "options": ["arrives", "arrived", "was arriving", "has arrived"],
+        "correct": 1, "explanation": "Hành động xảy ra đột ngột trong lúc khác đang xảy ra → quá khứ đơn."
+      },
+      {
+        "id": 6, "question": "He __ in this company since 2018.",
+        "options": ["works", "worked", "has worked", "is working"],
+        "correct": 2, "explanation": "'Since 2018' với hành động kéo dài đến nay → hiện tại hoàn thành."
+      },
+      {
+        "id": 7, "question": "This is __ film I have ever seen!",
+        "options": ["good", "better", "the best", "most good"],
+        "correct": 2, "explanation": "So sánh nhất dùng 'the + best' (bất quy tắc của 'good')."
+      },
+      {
+        "id": 8, "question": "Would you mind __ the window? It's cold.",
+        "options": ["close", "to close", "closing", "closed"],
+        "correct": 2, "explanation": "'Mind + V-ing': Would you mind closing...?"
+      },
+      {
+        "id": 9, "question": "The concert __ by the time we arrived.",
+        "options": ["finished", "has finished", "had finished", "was finishing"],
+        "correct": 2, "explanation": "Hành động hoàn thành TRƯỚC một mốc quá khứ khác → quá khứ hoàn thành."
+      },
+      {
+        "id": 10, "question": "He suggested __ to the new Italian restaurant downtown.",
+        "options": ["to go", "go", "going", "went"],
+        "correct": 2, "explanation": "'Suggest + V-ing': He suggested going..."
+      }
+    ]
+  },
+  "B1": {
+    "targetLevel": "B2",
+    "description": "Kiểm tra bị động, câu điều kiện loại 2-3, mệnh đề quan hệ và từ vựng nâng cao",
+    "questions": [
+      {
+        "id": 1, "question": "The Eiffel Tower __ in 1889.",
+        "options": ["built", "was built", "has been built", "build"],
+        "correct": 1, "explanation": "Câu bị động quá khứ đơn: was/were + V3."
+      },
+      {
+        "id": 2, "question": "If I __ a million dollars, I would travel the world.",
+        "options": ["have", "had", "would have", "will have"],
+        "correct": 1, "explanation": "Câu điều kiện loại 2 (giả định không có thật): if + quá khứ đơn, would + V."
+      },
+      {
+        "id": 3, "question": "The woman __ is talking to the manager is my aunt.",
+        "options": ["who", "which", "whose", "whom"],
+        "correct": 0, "explanation": "'Who' thay thế chủ ngữ là người trong mệnh đề quan hệ."
+      },
+      {
+        "id": 4, "question": "She wishes she __ harder when she was young.",
+        "options": ["studies", "studied", "had studied", "has studied"],
+        "correct": 2, "explanation": "'Wish' về quá khứ dùng 'had + V3': wishes she had studied."
+      },
+      {
+        "id": 5, "question": "He __ the project by Friday or he will lose the contract.",
+        "options": ["must finish", "had to finish", "should have finished", "ought finishing"],
+        "correct": 0, "explanation": "'Must' diễn tả sự bắt buộc ở hiện tại/tương lai."
+      },
+      {
+        "id": 6, "question": "Despite __ hard, she failed the exam.",
+        "options": ["study", "to study", "studied", "studying"],
+        "correct": 3, "explanation": "'Despite/In spite of + V-ing': Despite studying hard..."
+      },
+      {
+        "id": 7, "question": "The report needs __ before the meeting tomorrow.",
+        "options": ["to finalize", "finalizing", "to be finalized", "being finalize"],
+        "correct": 2, "explanation": "'Needs + to be + V3' diễn tả việc cần được thực hiện (bị động)."
+      },
+      {
+        "id": 8, "question": "Not only __ English but also Spanish fluently.",
+        "options": ["she speaks", "does she speak", "she does speak", "speaks she"],
+        "correct": 1, "explanation": "Đảo ngữ sau 'Not only': Not only does she speak..."
+      },
+      {
+        "id": 9, "question": "By the end of this year, she __ her degree.",
+        "options": ["will complete", "completes", "will have completed", "is completing"],
+        "correct": 2, "explanation": "Hành động hoàn thành trước mốc tương lai → tương lai hoàn thành."
+      },
+      {
+        "id": 10, "question": "The CEO, __ company went bankrupt, resigned last month.",
+        "options": ["who", "which", "whose", "that"],
+        "correct": 2, "explanation": "'Whose' thể hiện sở hữu trong mệnh đề quan hệ: whose company."
+      }
+    ]
+  },
+  "B2": {
+    "targetLevel": "C1",
+    "description": "Kiểm tra đảo ngữ, mệnh đề nhượng bộ, phrasal verbs nâng cao và từ vựng học thuật",
+    "questions": [
+      {
+        "id": 1, "question": "Had I known about the problem earlier, I __ helped.",
+        "options": ["will have", "would have", "could", "should"],
+        "correct": 1, "explanation": "Câu điều kiện loại 3 đảo ngữ: Had I known... would have + V3."
+      },
+      {
+        "id": 2, "question": "The new policy was met with __ resistance from the employees.",
+        "options": ["considerable", "considerate", "considering", "considerably"],
+        "correct": 0, "explanation": "'Considerable' (đáng kể) là tính từ, bổ nghĩa cho danh từ 'resistance'."
+      },
+      {
+        "id": 3, "question": "She __ a bold decision to leave her job and start her own business.",
+        "options": ["made", "did", "took", "had"],
+        "correct": 2, "explanation": "Collocation: 'take a decision' (especially British English)."
+      },
+      {
+        "id": 4, "question": "The findings of the research __ with the existing literature.",
+        "options": ["accord", "accords", "are according", "accorded"],
+        "correct": 0, "explanation": "Chủ ngữ số nhiều 'findings' dùng 'accord' (không thêm -s)."
+      },
+      {
+        "id": 5, "question": "Scarcely __ sat down when the phone rang.",
+        "options": ["she had", "had she", "has she", "she has"],
+        "correct": 1, "explanation": "Đảo ngữ sau 'Scarcely': Scarcely had she sat down..."
+      },
+      {
+        "id": 6, "question": "The manager tried to __ the conflict between the two departments.",
+        "options": ["mediate", "median", "mediation", "mediately"],
+        "correct": 0, "explanation": "'Mediate' là động từ phù hợp sau 'tried to'."
+      },
+      {
+        "id": 7, "question": "He argued that the evidence was __ to support the theory.",
+        "options": ["inadequate", "inadequately", "inadequacy", "inadequation"],
+        "correct": 0, "explanation": "Sau động từ 'was' (linking verb) dùng tính từ 'inadequate'."
+      },
+      {
+        "id": 8, "question": "It wasn't until midnight __ she realized she had left her keys inside.",
+        "options": ["when", "that", "which", "where"],
+        "correct": 1, "explanation": "Cấu trúc nhấn mạnh: 'It wasn't until... that...'."
+      },
+      {
+        "id": 9, "question": "The company's profits have __ significantly due to rising costs.",
+        "options": ["declined", "inclined", "reclined", "proclaimed"],
+        "correct": 0, "explanation": "'Decline' = giảm sút; phù hợp về nghĩa và cú pháp."
+      },
+      {
+        "id": 10, "question": "She is known for her __ attention to detail in all her work.",
+        "options": ["meticulous", "meticulously", "meticulousness", "meticulate"],
+        "correct": 0, "explanation": "Tính từ 'meticulous' bổ nghĩa cho danh từ 'attention'."
+      }
+    ]
+  },
+  "C1": {
+    "targetLevel": "C2",
+    "description": "Kiểm tra ngữ pháp tinh tế, thành ngữ nâng cao, từ vựng học thuật và sắc thái ngôn ngữ",
+    "questions": [
+      {
+        "id": 1, "question": "The author's __ prose style makes even complex ideas accessible to general readers.",
+        "options": ["lucid", "lucidly", "lucidity", "lucidness"],
+        "correct": 0, "explanation": "'Lucid' (rõ ràng, sáng sủa) là tính từ bổ nghĩa cho 'prose style'."
+      },
+      {
+        "id": 2, "question": "She has a __ knowledge of medieval history — she knows every detail.",
+        "options": ["profound", "sweeping", "rudimentary", "cursory"],
+        "correct": 0, "explanation": "'Profound' = sâu sắc, toàn diện; phù hợp nhất với 'knows every detail'."
+      },
+      {
+        "id": 3, "question": "The government's new policy __ much-needed reform in the healthcare system.",
+        "options": ["brought about", "brought up", "brought off", "brought round"],
+        "correct": 0, "explanation": "'Bring about' = gây ra, tạo ra (change/reform)."
+      },
+      {
+        "id": 4, "question": "His speech was so __ that even his opponents were moved.",
+        "options": ["eloquent", "loquacious", "verbose", "garrulous"],
+        "correct": 0, "explanation": "'Eloquent' = hùng hồn, có sức thuyết phục; các từ khác mang nghĩa tiêu cực."
+      },
+      {
+        "id": 5, "question": "The scientist's hypothesis, __ as it may seem, has gained significant traction.",
+        "options": ["far-fetched", "far-reaching", "far-sighted", "far-gone"],
+        "correct": 0, "explanation": "'Far-fetched' = khó tin, không thực tế; phù hợp về ngữ nghĩa."
+      },
+      {
+        "id": 6, "question": "Only by working together __ the community overcome such challenges.",
+        "options": ["the community can", "can the community", "does the community", "the community could"],
+        "correct": 1, "explanation": "Đảo ngữ sau 'Only by + V-ing': Only by... can + S + V."
+      },
+      {
+        "id": 7, "question": "The merger was __ to failure from the very beginning due to cultural clashes.",
+        "options": ["doomed", "condemned", "destined", "all of the above"],
+        "correct": 3, "explanation": "'Doomed/Condemned/Destined to failure' đều đúng ngữ pháp và nghĩa."
+      },
+      {
+        "id": 8, "question": "The theory, __ groundbreaking when first proposed, is now considered mainstream.",
+        "options": ["once considered", "once considering", "that once considered", "once been considered"],
+        "correct": 0, "explanation": "Reduced relative clause: 'once considered' = 'which was once considered'."
+      },
+      {
+        "id": 9, "question": "Her argument was __ — it could not be challenged or disproved.",
+        "options": ["irrefutable", "refutable", "disputable", "mutable"],
+        "correct": 0, "explanation": "'Irrefutable' = không thể bác bỏ; prefix 'ir-' = không."
+      },
+      {
+        "id": 10, "question": "The __ between the two theories lies in their fundamental assumptions about human nature.",
+        "options": ["dichotomy", "duality", "disparity", "divergence"],
+        "correct": 0, "explanation": "'Dichotomy' = sự phân đôi rõ rệt; phù hợp nhất khi nói về hai lý thuyết."
+      }
+    ]
+  }
+}
