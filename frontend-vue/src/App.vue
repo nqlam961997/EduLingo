@@ -56,6 +56,11 @@ function logout() {
             active-class="bg-blue-50 text-blue-700 font-medium">
             🖼️ Mô tả hình
           </RouterLink>
+          <RouterLink to="/vocabulary"
+            class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition"
+            active-class="bg-blue-50 text-blue-700 font-medium">
+            📚 Từ vựng
+          </RouterLink>
           <RouterLink to="/assessment"
             class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition"
             active-class="bg-blue-50 text-blue-700 font-medium">

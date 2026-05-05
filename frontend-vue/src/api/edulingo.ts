@@ -241,6 +241,75 @@ export async function submitAssessment(answers: number[]): Promise<AssessmentRes
   return res.json()
 }
 
+// ── Vocabulary ────────────────────────────────────────────────────────────
+
+export interface VocabularyLevelStats {
+  level: string
+  setCount: number
+  totalWords: number
+  mastered: number
+  difficulty: number
+}
+
+export interface VocabularySetSummary {
+  id: string
+  name: string
+  description: string
+  cefrLevel: string
+  difficulty: number
+  totalWords: number
+  mastered: number
+}
+
+export interface VocabularyWord {
+  id: string
+  word: string
+  pronunciation: string
+  meaning: string
+  wordType: string
+  example: string
+  exampleMeaning: string
+  mastered: boolean
+}
+
+export interface VocabularySetDetail {
+  id: string
+  name: string
+  description: string
+  cefrLevel: string
+  difficulty: number
+  words: VocabularyWord[]
+}
+
+export async function getVocabularyLevels(): Promise<VocabularyLevelStats[]> {
+  const res = await fetch('/api/vocabulary/levels', { headers: headers() })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function getVocabularySets(level: string): Promise<VocabularySetSummary[]> {
+  const res = await fetch(`/api/vocabulary/levels/${level}/sets`, { headers: headers() })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function getVocabularySet(setId: string): Promise<VocabularySetDetail> {
+  const res = await fetch(`/api/vocabulary/sets/${setId}`, { headers: headers() })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function toggleWordMastered(wordId: string): Promise<{ wordId: string; mastered: boolean }> {
+  const res = await fetch(`/api/vocabulary/words/${wordId}/toggle`, {
+    method: 'POST',
+    headers: headers()
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────
+
 export async function recordSession(
   sessionType: 'CHAT' | 'PICTURE',
   topicId: string,

@@ -26,7 +26,7 @@ spring:
     max-in-memory-size: 16MB
 
 ai:
-  provider: ${AI_PROVIDER:local} # gemini | local
+  provider: ${AI_PROVIDER:local} # local | openai | gemini
 
 gemini:
   api-key: ${GEMINI_API_KEY:AIzaSyB3T-ABtU0Hp7EqRdSKJCU9VMelVqQlvT4}
@@ -36,6 +36,12 @@ gemini:
 
 local-ai:
   base-url: ${LOCAL_AI_URL:http://localhost:8000}
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+  vision-model: ${OPENAI_VISION_MODEL:gpt-4o-mini}
 
 jwt:
   secret: ${JWT_SECRET:c2VjcmV0LWtleS1mb3ItZWR1bGluZ28tZGVtby1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}

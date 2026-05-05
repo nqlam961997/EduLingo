@@ -31,4 +31,14 @@ public class WebClientConfig {
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
                 .build();
     }
+
+    @Bean("openAiWebClient")
+    WebClient openAiWebClient(@Value("${openai.base-url:https://api.openai.com/v1}") String baseUrl) {
+        HttpClient httpClient = HttpClient.create().responseTimeout(Duration.ofSeconds(60));
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+                .build();
+    }
 }
