@@ -6,8 +6,12 @@ import com.edulingo.entity.Vocabulary;
 import com.edulingo.entity.WordSet;
 import com.edulingo.repository.*;
 import com.edulingo.security.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -17,6 +21,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/vocabulary")
 public class VocabularyController {
+
+    private static final Logger log = LoggerFactory.getLogger(VocabularyController.class);
 
     private final WordSetRepository          wordSetRepo;
     private final VocabularyRepository       vocabRepo;
@@ -130,10 +136,12 @@ public class VocabularyController {
     @PostMapping("/words/{wordId}/toggle")
     public Mono<ResponseEntity<Map<String, Object>>> toggleMastered(@PathVariable UUID wordId) {
         return security.currentUserId()
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized")))
                 .flatMap(uid -> Mono.fromCallable(() -> doToggle(uid, wordId))
                         .subscribeOn(Schedulers.boundedElastic()))
-                .switchIfEmpty(Mono.just(ResponseEntity.status(401).<Map<String, Object>>build()))
-                .onErrorReturn(ResponseEntity.status(401).<Map<String, Object>>build());
+                .onErrorResume(ResponseStatusException.class,
+                        e -> Mono.just(ResponseEntity.status(e.getStatusCode()).<Map<String, Object>>build()))
+                .doOnError(e -> log.error("Failed to toggle vocabulary word {}", wordId, e));
     }
 
     private ResponseEntity<Map<String, Object>> doToggle(UUID userId, UUID wordId) {
