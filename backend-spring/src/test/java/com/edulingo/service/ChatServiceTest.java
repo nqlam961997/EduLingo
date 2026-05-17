@@ -27,13 +27,16 @@ class ChatServiceTest {
 
     @Mock AiService              gemini;
     @Mock PersonalizationService personalization;
+    @Mock ChatSessionService     chatSessions;
+    @Mock ScratchpadExtractor    extractor;
 
-    // Dùng real ObjectMapper vì ChatService cần parse JSON từ AI response
+    // Use real PromptAssembler + ObjectMapper because they're pure-function collaborators.
     private ChatService service;
 
     @BeforeEach
     void setUp() {
-        service = new ChatService(gemini, personalization, new ObjectMapper());
+        service = new ChatService(gemini, personalization, new PromptAssembler(),
+                chatSessions, extractor, new ObjectMapper());
     }
 
     // ── reply() — streaming ──────────────────────────────────────────────────
@@ -42,7 +45,7 @@ class ChatServiceTest {
     @DisplayName("reply() phải stream đúng các chunk từ AiService")
     void reply_streamsChunksFromAiService() {
         setupProfile();
-        when(gemini.streamGenerate(anyString(), anyString()))
+        when(gemini.streamGenerate(anyString(), anyList()))
                 .thenReturn(Flux.just("{\"reply\":\"Hello!\",", "\"suggestions\":[],", "\"errors\":[]}"));
 
         ChatRequest req = makeChatRequest("Hi there");
@@ -62,7 +65,7 @@ class ChatServiceTest {
                 "{\"type\":\"Grammar\",\"original\":\"I go yesterday\"," +
                 "\"fixed\":\"I went yesterday\",\"explain_vi\":\"quá khứ đơn\"}]}";
 
-        when(gemini.streamGenerate(anyString(), anyString()))
+        when(gemini.streamGenerate(anyString(), anyList()))
                 .thenReturn(Flux.just(aiJson));
 
         ChatRequest req = makeChatRequest("I go yesterday to school");
@@ -90,7 +93,7 @@ class ChatServiceTest {
         setupProfile();
         String aiJson = "{\"reply\":\"Good job!\",\"suggestions\":[],\"errors\":[]}";
 
-        when(gemini.streamGenerate(anyString(), anyString()))
+        when(gemini.streamGenerate(anyString(), anyList()))
                 .thenReturn(Flux.just(aiJson));
 
         StepVerifier.create(service.reply("user@test.com", makeChatRequest("Hello")))
@@ -105,7 +108,7 @@ class ChatServiceTest {
     @DisplayName("reply() không crash khi AI trả về JSON không hợp lệ")
     void reply_doesNotCrashOnMalformedJson() {
         setupProfile();
-        when(gemini.streamGenerate(anyString(), anyString()))
+        when(gemini.streamGenerate(anyString(), anyList()))
                 .thenReturn(Flux.just("not valid json at all"));
 
         StepVerifier.create(service.reply("user@test.com", makeChatRequest("Hello")))
@@ -117,7 +120,7 @@ class ChatServiceTest {
     @DisplayName("reply() phải propagate lỗi khi AiService ném exception")
     void reply_propagatesAiServiceError() {
         setupProfile();
-        when(gemini.streamGenerate(anyString(), anyString()))
+        when(gemini.streamGenerate(anyString(), anyList()))
                 .thenReturn(Flux.error(new RuntimeException("AI service down")));
 
         StepVerifier.create(service.reply("user@test.com", makeChatRequest("Hi")))

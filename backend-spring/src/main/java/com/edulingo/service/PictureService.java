@@ -132,7 +132,7 @@ public class PictureService {
                     String systemPrompt = personalization.pictureDescribeSystemPrompt(
                             profile, topic, imageDescription);
                     String userText = "Learner description: " + userDescription;
-                    return aiService.generate(systemPrompt, userText)
+                    return aiService.generate(systemPrompt, java.util.List.of(com.edulingo.dto.ChatMessage.user(userText)))
                             .map(this::parse)
                             .doOnNext(resp -> persistErrors(profile.getId(), resp));
                 });
@@ -195,7 +195,7 @@ public class PictureService {
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(profile -> {
                     String systemPrompt = personalization.questionAnswerSystemPrompt(profile, topic, scene, question);
-                    return aiService.generate(systemPrompt, answer)
+                    return aiService.generate(systemPrompt, java.util.List.of(com.edulingo.dto.ChatMessage.user(answer)))
                             .map(this::parseAnswerFeedback)
                             .doOnNext(fb -> {
                                 if (fb.corrected() != null && !fb.corrected().isBlank()) {
@@ -232,9 +232,6 @@ public class PictureService {
     }
 
     private TopicDto.Topic findTopic(String topicId) {
-        return TopicDto.TOPICS.stream()
-                .filter(t -> t.id().equals(topicId))
-                .findFirst()
-                .orElse(new TopicDto.Topic(topicId, topicId, "", "", "Tutor", "English Tutor", "🧑‍🏫"));
+        return TopicDto.requireTopic(topicId);
     }
 }

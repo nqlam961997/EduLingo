@@ -1,5 +1,6 @@
 package com.edulingo.service;
 
+import com.edulingo.dto.ChatMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -46,10 +48,9 @@ public class OpenAiService implements AiService {
         this.visionModel  = visionModel;
     }
 
-    // ── generate (non-streaming) ─────────────────────────────────────────────
     @Override
-    public Mono<String> generate(String systemPrompt, String userText) {
-        Map<String, Object> body = chatBody(model, systemPrompt, userText, false);
+    public Mono<String> generate(String systemPrompt, List<ChatMessage> messages) {
+        Map<String, Object> body = chatBody(model, systemPrompt, messages, false);
         return webClient.post()
                 .uri("/chat/completions")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -64,10 +65,9 @@ public class OpenAiService implements AiService {
                 .doOnError(e -> log.error("OpenAI generate error: {}", e.getMessage()));
     }
 
-    // ── streamGenerate (SSE) ─────────────────────────────────────────────────
     @Override
-    public Flux<String> streamGenerate(String systemPrompt, String userText) {
-        Map<String, Object> body = chatBody(model, systemPrompt, userText, true);
+    public Flux<String> streamGenerate(String systemPrompt, List<ChatMessage> messages) {
+        Map<String, Object> body = chatBody(model, systemPrompt, messages, true);
         return webClient.post()
                 .uri("/chat/completions")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -84,11 +84,9 @@ public class OpenAiService implements AiService {
                 .doOnError(e -> log.error("OpenAI stream error: {}", e.getMessage()));
     }
 
-    // ── generateWithBase64Image (vision) ────────────────────────────────────
     @Override
     public Mono<String> generateWithBase64Image(String systemPrompt, String userText,
                                                  String base64Data, String mimeType) {
-        // GPT-4o-mini supports vision via image_url with data URI
         List<Map<String, Object>> userContent = List.of(
                 Map.of("type", "text", "text", userText),
                 Map.of("type", "image_url",
@@ -115,38 +113,33 @@ public class OpenAiService implements AiService {
                 .doOnError(e -> log.error("OpenAI vision error: {}", e.getMessage()));
     }
 
-    // ── helpers ──────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
-    private Map<String, Object> chatBody(String mdl, String system, String user, boolean stream) {
+    private Map<String, Object> chatBody(String mdl, String system, List<ChatMessage> messages, boolean stream) {
+        List<Map<String, Object>> body = new ArrayList<>(messages.size() + 1);
+        body.add(Map.of("role", "system", "content", system));
+        for (ChatMessage m : messages) {
+            String role = (m.role() == ChatMessage.MessageRole.ASSISTANT) ? "assistant" : "user";
+            body.add(Map.of("role", role, "content", m.content()));
+        }
         return Map.of(
                 "model",    mdl,
                 "stream",   stream,
-                "messages", List.of(
-                        Map.of("role", "system", "content", system),
-                        Map.of("role", "user",   "content", user)
-                )
+                "messages", body
         );
     }
 
-    /** Extract content from a non-streaming response. */
     private String extractContent(JsonNode root) {
-        return root.path("choices").path(0)
-                   .path("message").path("content").asText("");
+        return root.path("choices").path(0).path("message").path("content").asText("");
     }
 
-    /**
-     * Parse an SSE line from OpenAI streaming.
-     * Lines look like: "data: {...}" or "data: [DONE]"
-     */
     private String extractDeltaOrNull(String line) {
         if (!line.startsWith("data:")) return null;
         String json = line.substring(5).trim();
         if ("[DONE]".equals(json)) return null;
         try {
             JsonNode node = mapper.readTree(json);
-            String delta = node.path("choices").path(0)
-                               .path("delta").path("content").asText("");
-            return delta;
+            return node.path("choices").path(0).path("delta").path("content").asText("");
         } catch (Exception e) {
             log.debug("Could not parse SSE line: {}", line);
             return null;

@@ -38,28 +38,6 @@ public class PersonalizationService {
         });
     }
 
-    public String chatSystemPrompt(LearnerProfile p) {
-        String topErrors = topErrorsAsBullets(p.getId(), 5);
-        return """
-                You are an English tutor for a %s learner.
-                Goal: %s.
-
-                Their recurring mistakes (avoid letting them slip):
-                %s
-
-                Rules:
-                1. Keep replies short and natural at level %s.
-                2. Gently flag any of their recurring mistakes when they appear.
-                3. After your reply, return JSON only:
-                   {"reply":"...","suggestions":["...","...","..."]}
-                """.formatted(
-                p.getCefrLevel(),
-                p.getLearningGoal() == null ? "general English" : p.getLearningGoal(),
-                topErrors.isBlank() ? "(none recorded yet)" : topErrors,
-                p.getCefrLevel()
-        );
-    }
-
     public String pictureSystemPrompt(LearnerProfile p) {
         String topErrors = topErrorsAsBullets(p.getId(), 5);
         return """

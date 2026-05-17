@@ -304,3 +304,36 @@ Override in `.env`: `HTTP_PORT=8080`, `HTTPS_PORT=8443`. Then visit `http://loca
 **`Ollama connection refused`** — `ollama serve` chưa chạy.
 **`edge-tts` không có giọng (TTS im lặng)** — Cần kết nối Internet.
 **Trang trắng khi vào localhost:5173** — Chạy `npm run dev:fresh` để clear Vite cache.
+
+---
+
+## Chat AI — kiến trúc context (chat-context-awareness)
+
+Các thành phần chính của chat roleplay:
+
+- **Persona cards** (`backend-spring/.../dto/TopicDto.java`) — mỗi topic có một
+  `PersonaCard` đầy đủ: name, role, voice, does/doesn't, vocab anchors theo CEFR,
+  scenario seed cố định, opening line cố định, plus per-type slots/phases/rhythm beats.
+  Không còn sinh scenario bằng AI.
+- **3 topic types** — `TRANSACTIONAL` (slot machine), `ASYMMETRIC` (phase machine),
+  `FREE_FORM` (rhythm beat). Mỗi type có template prompt riêng và schema scratchpad riêng.
+- **Multi-turn messages** — `AiService.streamGenerate(systemPrompt, List<ChatMessage>)`
+  gửi `messages[]` đúng định dạng tới Gemini / OpenAI / Ollama (không còn flatten
+  "Learner:\nYou:" thành 1 user message).
+- **Chat session + scratchpad** (`chat_session` table, `ChatSessionService`,
+  `DefaultScratchpadExtractor`) — sau mỗi turn, một extraction call thứ hai trích
+  state có cấu trúc (slot/phase/beat) lưu vào DB; turn sau đọc lại và inject vào prompt.
+  Extraction fail thì giữ scratchpad cũ (graceful degradation).
+- **Eval harness 3 lớp** —
+  Layer 1 (`PromptAssemblerTest`, `PersonaCardTest`, `TopicTaxonomyTest`) chạy trong
+  `mvn test`. Layer 2 (`ChatSessionServiceTest`, `ScratchpadExtractorTest`) cũng
+  trong `mvn test`. Layer 3 (`eval/` Python) chạy live-model rubric — xem `eval/README.md`.
+
+Spec đầy đủ: `openspec/changes/chat-context-awareness/`.
+
+Khi `ai.provider=local`, có thể chạy thêm 1 model nhỏ cho extraction:
+
+```bash
+export OLLAMA_EXTRACTION_MODEL=qwen2.5:1.5b
+```
+

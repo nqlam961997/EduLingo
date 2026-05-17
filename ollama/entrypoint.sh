@@ -8,6 +8,9 @@
 set -eu
 
 MODEL="${OLLAMA_MODEL:-qwen2.5:3b}"
+# Optional smaller model used by the chat scratchpad extractor (Phase 2 of
+# chat-context-awareness). Leave empty to disable the extra pull.
+EXTRACTION_MODEL="${OLLAMA_EXTRACTION_MODEL:-}"
 
 echo "[entrypoint] starting ollama serve in background..."
 ollama serve &
@@ -26,15 +29,20 @@ until ollama list >/dev/null 2>&1; do
 done
 echo "[entrypoint] ollama is responsive after ${i}s."
 
-# Pull the model if it's not already in the local store. `ollama list` prints
-# a table; we just need to know if MODEL is one of the listed names.
-if ollama list | awk 'NR>1 {print $1}' | grep -Fxq "$MODEL"; then
-  echo "[entrypoint] model '$MODEL' already present — skipping pull."
-else
-  echo "[entrypoint] pulling model '$MODEL' (first-run, this can be slow — ~2GB)..."
-  ollama pull "$MODEL"
-  echo "[entrypoint] pull complete."
-fi
+ensure_model() {
+  m="$1"
+  [ -z "$m" ] && return 0
+  if ollama list | awk 'NR>1 {print $1}' | grep -Fxq "$m"; then
+    echo "[entrypoint] model '$m' already present — skipping pull."
+  else
+    echo "[entrypoint] pulling model '$m' (first-run, this can be slow)..."
+    ollama pull "$m"
+    echo "[entrypoint] pull '$m' complete."
+  fi
+}
+
+ensure_model "$MODEL"
+ensure_model "$EXTRACTION_MODEL"
 
 # Hand off to the running server so PID 1 is the long-lived process.
 echo "[entrypoint] ready; tailing ollama serve."

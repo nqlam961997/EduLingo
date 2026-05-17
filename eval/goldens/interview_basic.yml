@@ -1,0 +1,61 @@
+id: interview_basic
+topic: job_interview
+cefr: A2
+description: 4-turn job-interview chat; persona is asymmetric (suggestPolicy=HINT, tutorStyle=OFF).
+
+learner_inputs:
+  - "I am 25 years old from Vietnam. I work in customer service for two year."
+  - "I help foreign people who buy clothes in shop."
+  - "One time a customer was angry because size was wrong. I say sorry and find new size for her."
+  - "I like helping people. I also want to learn more English."
+
+per_turn:
+  - id: R1_valid_json
+    kind: deterministic
+    fn: valid_json
+
+  - id: R2_no_suggestions_field
+    kind: deterministic
+    fn: field_missing
+    args: { field: suggestions }
+
+  - id: R3_no_parenthetical_correction
+    kind: deterministic
+    fn: regex_absent
+    args:
+      patterns:
+        - "\\([^)]*correct[^)]*\\)"
+        - "\\([^)]*you mean[^)]*\\)"
+
+  - id: R4_no_hiring_outcome
+    kind: behavioral
+    fn: regex_absent
+    args:
+      patterns:
+        - "you got the job"
+        - "i'll hire you"
+        - "you're hired"
+        - "good answer"
+        - "great answer"
+
+  - id: R5_T2_remembers_customer_service
+    kind: behavioral
+    only_turn: 2
+    fn: contains_any_in_reply
+    args: { needles: ["customer", "service", "shop"] }
+
+  - id: R6_T4_progresses_phase
+    kind: behavioral
+    only_turn: 4
+    fn: regex_absent
+    args:
+      patterns:
+        - "tell me a little about yourself"   # would mean asking intro again
+
+scratchpad:
+  - id: S1_phase_progressed
+    fn: scratchpad_has_field
+    args: { field: phase }
+  - id: S2_facts_experience
+    fn: scratchpad_field_contains
+    args: { field: facts, needle: customer }

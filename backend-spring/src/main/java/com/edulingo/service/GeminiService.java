@@ -1,12 +1,12 @@
 package com.edulingo.service;
 
+import com.edulingo.dto.ChatMessage;
 import com.edulingo.dto.GeneratedImageData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,11 +44,12 @@ public class GeminiService implements AiService {
         this.imageModel = imageModel;
     }
 
-    public Mono<String> generate(String systemPrompt, String userText) {
+    @Override
+    public Mono<String> generate(String systemPrompt, List<ChatMessage> messages) {
         return webClient.post()
                 .uri(uri -> uri.path("/models/{m}:generateContent").queryParam("key", apiKey).build(model))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(jsonBody(systemPrompt, userText))
+                .bodyValue(buildBody(systemPrompt, messages, true))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, resp ->
                         resp.bodyToMono(String.class).flatMap(body -> geminiError(resp.statusCode(), body)))
@@ -56,13 +58,14 @@ public class GeminiService implements AiService {
                 .retryWhen(retryOn503());
     }
 
-    public Flux<String> streamGenerate(String systemPrompt, String userText) {
+    @Override
+    public Flux<String> streamGenerate(String systemPrompt, List<ChatMessage> messages) {
         return webClient.post()
                 .uri(uri -> uri.path("/models/{m}:streamGenerateContent")
                         .queryParam("alt", "sse")
                         .queryParam("key", apiKey).build(model))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(textBody(systemPrompt, userText))
+                .bodyValue(buildBody(systemPrompt, messages, false))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, resp ->
                         resp.bodyToMono(String.class).flatMap(body -> geminiError(resp.statusCode(), body)))
@@ -120,6 +123,26 @@ public class GeminiService implements AiService {
                 .retryWhen(retryOn503());
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private Map<String, Object> buildBody(String systemPrompt, List<ChatMessage> messages, boolean jsonMode) {
+        List<Map<String, Object>> contents = new ArrayList<>(messages.size());
+        for (ChatMessage m : messages) {
+            String role = (m.role() == ChatMessage.MessageRole.ASSISTANT) ? "model" : "user";
+            contents.add(Map.of(
+                    "role", role,
+                    "parts", List.of(Map.of("text", m.content()))
+            ));
+        }
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))));
+        body.put("contents", contents);
+        if (jsonMode) {
+            body.put("generationConfig", Map.of("responseMimeType", "application/json"));
+        }
+        return body;
+    }
+
     private GeneratedImageData extractImage(JsonNode root) {
         JsonNode parts = root.path("candidates").path(0).path("content").path("parts");
         for (JsonNode part : parts) {
@@ -133,27 +156,6 @@ public class GeminiService implements AiService {
         }
         throw new ResponseStatusException(
                 org.springframework.http.HttpStatus.BAD_GATEWAY, "Gemini did not return an image");
-    }
-
-    private Map<String, Object> textBody(String systemPrompt, String userText) {
-        return Map.of(
-                "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
-                "contents", List.of(Map.of(
-                        "role", "user",
-                        "parts", List.of(Map.of("text", userText))
-                ))
-        );
-    }
-
-    private Map<String, Object> jsonBody(String systemPrompt, String userText) {
-        return Map.of(
-                "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
-                "contents", List.of(Map.of(
-                        "role", "user",
-                        "parts", List.of(Map.of("text", userText))
-                )),
-                "generationConfig", Map.of("responseMimeType", "application/json")
-        );
     }
 
     private String extractText(JsonNode node) {

@@ -1,0 +1,75 @@
+id: restaurant_basic
+topic: restaurant
+cefr: A2
+description: 5-turn restaurant order; learner makes a plural mistake at T2.
+
+learner_inputs:
+  - "two please"
+  - "i want pastas"        # plural mistake — Maria should subtle-recast to "pasta"
+  - "water please"
+  - "no just pasta"
+  - "yes please, dessert"
+
+# Per-turn assertions
+per_turn:
+  - id: R1_valid_json
+    kind: deterministic
+    fn: valid_json
+
+  - id: R2_no_parenthetical_correction
+    kind: deterministic
+    fn: regex_absent
+    args:
+      patterns:
+        - "\\([^)]*correct[^)]*\\)"
+        - "\\([^)]*you mean[^)]*\\)"
+
+  - id: R3_reply_sentence_count_1_to_3
+    kind: deterministic
+    fn: reply_sentence_count_in_range
+    args: { low: 1, high: 4 }
+
+  - id: R4_three_suggestions
+    kind: deterministic
+    fn: array_size
+    args: { field: suggestions, expected: 3 }
+
+  - id: R5_suggestions_short
+    kind: deterministic
+    fn: wordcount_per_item
+    args: { field: suggestions, max_words: 8 }
+
+  - id: R6_T2_error_detected
+    kind: behavioral
+    only_turn: 2
+    fn: contains_any_in_field
+    args:
+      field: errors
+      needles: ["pastas", "pasta"]
+
+  - id: R7_T5_remembers_pasta_or_water
+    kind: behavioral
+    only_turn: 5
+    fn: contains_any_in_reply_or_suggestions
+    args: { needles: ["pasta", "water"] }
+
+  - id: R8_no_forbidden_phrases
+    kind: behavioral
+    fn: regex_absent
+    args:
+      patterns:
+        - "as an ai"
+        - "i'm here to help you learn"
+        - "let me correct"
+
+# End-of-chat scratchpad assertions (deterministic)
+scratchpad:
+  - id: S1_main_pasta
+    fn: scratchpad_field_contains
+    args: { field: main, needle: pasta }
+  - id: S2_drink_water
+    fn: scratchpad_field_contains
+    args: { field: drink, needle: water }
+  - id: S3_party_size
+    fn: scratchpad_field_contains
+    args: { field: party_size, needle: "2" }
