@@ -11,6 +11,15 @@ const Live2DAvatar = defineAsyncComponent({
   delay: 200,
 })
 
+// Eager preload: start fetching + parsing the Live2D bundle and model assets
+// immediately when ChatView mounts, while the user is still looking at the
+// topic picker. Without this, the chunk download + Pixi.js parse + 3.1MB Haru
+// model fetch all happen on topic-click and block the main thread, leaving
+// "Thinking..." stuck on stale DOM for several seconds even though /api/chat/start
+// returns in ~50ms. Fire-and-forget; the lazy import above still owns errors.
+void import('../components/Live2DAvatar.vue')
+void fetch(LIVE2D_MODEL).catch(() => { /* preload only; defineAsyncComponent surfaces real errors */ })
+
 interface Msg { role: 'user' | 'assistant'; text: string; suggestions?: string[] }
 
 const selectedTopic = ref<Topic | null>(null)
@@ -18,6 +27,8 @@ const scenario = ref('')
 const characterName = ref('')
 const characterRole = ref('')
 const characterAvatar = ref('')
+const suggestPolicy = ref<'ON' | 'OFF' | 'HINT'>('ON')
+const sessionId = ref<string | null>(null)
 const messages = ref<Msg[]>([])
 const input = ref('')
 const busy = ref(false)
@@ -32,140 +43,97 @@ const micError = ref('')
 const interimText = ref('')
 const mouthOpenness = ref(0)    // 0–1, drives Live2D mouth parameter
 
-let recognition: any = null
 let currentUtterance: SpeechSynthesisUtterance | null = null
-let retryCount = 0
-const MAX_RETRIES = 2
-let micStream: MediaStream | null = null
 
 // Audio context cho TTS lip sync
 let audioCtx: AudioContext | null = null
 let audioSource: AudioBufferSourceNode | null = null
 let lipSyncRaf = 0
 
-async function requestMicPermission(): Promise<boolean> {
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    return true
-  } catch {
-    micError.value = 'Microphone access denied. Please allow microphone permission in your browser settings.'
-    setTimeout(() => { micError.value = '' }, 5000)
-    return false
-  }
-}
-
-function createRecognition() {
-  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-  if (!SR) return null
-  const r = new SR()
-  r.lang = 'en-US'
-  r.continuous = false
-  r.interimResults = true
-  r.maxAlternatives = 1
-
-  r.onresult = (e: any) => {
-    let interim = ''
-    let final = ''
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const transcript = e.results[i][0].transcript
-      if (e.results[i].isFinal) {
-        final += transcript
-      } else {
-        interim += transcript
-      }
-    }
-    if (final) {
-      input.value += final
-      interimText.value = ''
-      retryCount = 0
-    } else {
-      interimText.value = interim
-    }
-  }
-
-  r.onend = () => {
-    isListening.value = false
-    interimText.value = ''
-    if (input.value.trim()) {
-      showKeyboard.value = true
-    }
-  }
-
-  r.onerror = (e: any) => {
-    isListening.value = false
-    interimText.value = ''
-
-    if (e.error === 'network' && retryCount < MAX_RETRIES) {
-      retryCount++
-      micError.value = `Connection issue, retrying... (${retryCount}/${MAX_RETRIES})`
-      recognition = null
-      setTimeout(() => {
-        micError.value = ''
-        startListening()
-      }, 1000)
-      return
-    }
-
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      micError.value = 'Microphone blocked. Check browser permissions (click lock icon in address bar).'
-    } else if (e.error === 'no-speech') {
-      micError.value = 'No speech detected. Tap the mic and try again.'
-    } else if (e.error === 'network') {
-      micError.value = 'Cannot connect to speech service. Try: 1) Check internet connection 2) Use Chrome 3) Use keyboard input instead.'
-      showKeyboard.value = true
-    } else if (e.error === 'aborted') {
-      return
-    } else {
-      micError.value = 'Speech error: ' + e.error
-    }
-    setTimeout(() => { micError.value = '' }, 6000)
-  }
-
-  return r
-}
+// === Self-hosted STT via /ai/stt (faster-whisper) ===
+// Captures audio with MediaRecorder, uploads the blob, displays the
+// transcription. Replaces Chrome's webkitSpeechRecognition (which silently
+// hangs when its connection to Google's STT cloud is blocked / filtered).
+let mediaRecorder: MediaRecorder | null = null
+let audioChunks: Blob[] = []
+let currentStream: MediaStream | null = null
+let recordedMimeType = 'audio/webm'
 
 async function startListening() {
   if (busy.value) return
 
-  if (!micStream) {
-    const ok = await requestMicPermission()
-    if (!ok) return
+  let stream: MediaStream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch {
+    micError.value = 'Microphone access denied. Please allow microphone permission in your browser settings.'
+    setTimeout(() => { micError.value = '' }, 5000)
+    return
   }
 
-  recognition = createRecognition()
-  if (!recognition) {
-    micError.value = 'Speech recognition not supported. Please use Chrome or Edge browser.'
+  if (typeof MediaRecorder === 'undefined') {
+    stream.getTracks().forEach(t => t.stop())
+    micError.value = 'Audio recording not supported in this browser. Please use Chrome, Edge, or Firefox.'
     showKeyboard.value = true
     setTimeout(() => { micError.value = '' }, 5000)
     return
   }
 
-  try {
-    input.value = ''
-    interimText.value = ''
-    showKeyboard.value = true
-    recognition.start()
-    isListening.value = true
-  } catch (e: any) {
+  currentStream = stream
+  audioChunks = []
+  // Prefer webm/opus; fall back to whatever the browser picks (Safari defaults to mp4/aac).
+  recordedMimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : ''
+  mediaRecorder = recordedMimeType
+    ? new MediaRecorder(stream, { mimeType: recordedMimeType })
+    : new MediaRecorder(stream)
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) audioChunks.push(e.data)
+  }
+
+  mediaRecorder.onstop = async () => {
+    currentStream?.getTracks().forEach(t => t.stop())
+    currentStream = null
     isListening.value = false
-    if (e.message?.includes('already started')) {
-      recognition.stop()
-      setTimeout(() => startListening(), 300)
-    } else {
-      micError.value = 'Could not start: ' + e.message
-      setTimeout(() => { micError.value = '' }, 5000)
+    if (audioChunks.length === 0) return
+
+    interimText.value = 'Transcribing...'
+    const blob = new Blob(audioChunks, { type: mediaRecorder?.mimeType || recordedMimeType || 'audio/webm' })
+
+    try {
+      const fd = new FormData()
+      fd.append('audio', blob, 'clip.webm')
+      const res = await fetch(`${LOCAL_AI_URL}/stt`, { method: 'POST', body: fd })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const text = (data.text ?? '').trim()
+      if (text) {
+        input.value += (input.value ? ' ' : '') + text
+        showKeyboard.value = true
+      } else {
+        micError.value = 'No speech detected. Tap the mic and try again.'
+        setTimeout(() => { micError.value = '' }, 5000)
+      }
+    } catch (e) {
+      micError.value = 'Speech recognition failed: ' + (e as Error).message
+      setTimeout(() => { micError.value = '' }, 6000)
+    } finally {
+      interimText.value = ''
     }
   }
+
+  showKeyboard.value = true
+  mediaRecorder.start()
+  isListening.value = true
 }
 
 function toggleListening() {
   micError.value = ''
-  if (isListening.value) {
-    recognition?.stop()
-    isListening.value = false
-    retryCount = 0
+  if (isListening.value && mediaRecorder?.state === 'recording') {
+    mediaRecorder.stop()  // triggers onstop, which uploads + clears isListening
   } else {
-    retryCount = 0
     startListening()
   }
 }
@@ -287,27 +255,42 @@ function revealHint() {
 }
 
 async function onTopic(topic: Topic) {
+  // [DIAG] Time every phase of topic-pick → opening message → busy released
+  const t0 = performance.now()
+  const tlog = (msg: string) => console.log(`[CHAT +${((performance.now() - t0)).toFixed(0)}ms]`, msg)
+  tlog('onTopic start')
+
   selectedTopic.value = topic
   busy.value = true
+  tlog('busy=true (Thinking... should appear)')
   try {
+    tlog('fetch /api/chat/start ...')
     const resp = await startScenario(topic.id)
+    tlog('/api/chat/start returned')
     scenario.value = resp.scenario
     characterName.value = resp.characterName
     characterRole.value = resp.characterRole
     characterAvatar.value = resp.characterAvatar
+    suggestPolicy.value = resp.suggestPolicy ?? 'ON'
+    sessionId.value = resp.sessionId ?? null
     messages.value = [{ role: 'assistant', text: resp.openingMessage }]
+    tlog('messages state set')
     speakText(resp.openingMessage)
+    tlog('speakText() called (not awaited)')
   } catch (e) {
     messages.value = [{ role: 'assistant', text: 'Error: ' + (e as Error).message }]
+    tlog('error: ' + (e as Error).message)
   } finally {
     busy.value = false
+    tlog('busy=false (Thinking... should disappear)')
+    nextTick().then(() => tlog('Vue nextTick after busy=false (DOM should be updated)'))
   }
 }
 
 async function send(text?: string) {
   const message = (text ?? input.value).trim()
   if (!message || busy.value || !selectedTopic.value) return
-  if (isListening.value && recognition) { recognition.stop(); isListening.value = false }
+  if (isListening.value && mediaRecorder?.state === 'recording') { mediaRecorder.stop(); isListening.value = false }
   input.value = ''
   interimText.value = ''
   showHint.value = false
@@ -322,7 +305,7 @@ async function send(text?: string) {
   try {
     let raw = ''
     for await (const chunk of streamReply(
-      selectedTopic.value.id, scenario.value, history, message
+      selectedTopic.value.id, scenario.value, history, message, sessionId.value
     )) {
       raw += chunk
       reply.text = raw
@@ -355,6 +338,8 @@ function reset() {
   characterName.value = ''
   characterRole.value = ''
   characterAvatar.value = ''
+  suggestPolicy.value = 'ON'
+  sessionId.value = null
   messages.value = []
   showKeyboard.value = false
   sessionRecorded.value = false
@@ -385,9 +370,11 @@ async function scrollToEnd() {
 onUnmounted(() => {
   stopSpeaking()
   if (audioCtx) { audioCtx.close(); audioCtx = null }
-  recognition?.stop()
-  micStream?.getTracks().forEach(t => t.stop())
-  micStream = null
+  if (mediaRecorder?.state === 'recording') {
+    try { mediaRecorder.stop() } catch { /* ignore */ }
+  }
+  currentStream?.getTracks().forEach(t => t.stop())
+  currentStream = null
 })
 </script>
 
@@ -438,7 +425,7 @@ onUnmounted(() => {
               <template v-if="m.role === 'assistant'">
                 <div class="bubble ai">
                   <p>{{ m.text || '...' }}</p>
-                  <div v-if="m.suggestions?.length" class="suggestions">
+                  <div v-if="m.suggestions?.length && suggestPolicy !== 'OFF'" class="suggestions">
                     <button v-for="s in m.suggestions" :key="s" @click="send(s)" class="chip">{{ s }}</button>
                   </div>
                 </div>

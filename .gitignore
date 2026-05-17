@@ -40,9 +40,9 @@ logs/
 # ══════════════════════════════════════════════════════════════════════════════
 # PYTHON (backend-python)
 # ══════════════════════════════════════════════════════════════════════════════
-backend-python/__pycache__/
-backend-python/*.py[cod]
-backend-python/*$py.class
+backend-python/**/__pycache__/
+backend-python/**/*.py[cod]
+backend-python/**/*$py.class
 backend-python/.venv/
 backend-python/venv/
 backend-python/env/

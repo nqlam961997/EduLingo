@@ -1,15 +1,17 @@
 import json
 import os
 import re
-from typing import AsyncGenerator
+from functools import lru_cache
+from io import BytesIO
+from typing import AsyncGenerator, List, Literal, Optional
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
-app = FastAPI(title="EduLingo Local AI", version="1.0.0")
+app = FastAPI(title="EduLingo Local AI", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,14 +25,35 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma2:9b")
 TTS_VOICE = os.getenv("TTS_VOICE", "en-US-JennyNeural")
 
 
+class WireMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class GenerateRequest(BaseModel):
     system_prompt: str
-    user_text: str
+    # New multi-turn shape (preferred).
+    messages: Optional[List[WireMessage]] = None
+    # Legacy single-turn field kept for transitional compat with older clients
+    # that may still POST {system_prompt, user_text}.
+    user_text: Optional[str] = None
 
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str | None = None
+    voice: Optional[str] = None
+
+
+def _build_ollama_messages(req: GenerateRequest) -> list[dict]:
+    out: list[dict] = [{"role": "system", "content": req.system_prompt}]
+    if req.messages:
+        for m in req.messages:
+            out.append({"role": m.role, "content": m.content})
+    elif req.user_text is not None:
+        out.append({"role": "user", "content": req.user_text})
+    else:
+        raise HTTPException(status_code=400, detail="Either 'messages' or 'user_text' must be provided")
+    return out
 
 
 @app.get("/health")
@@ -42,12 +65,13 @@ async def health():
 async def generate(req: GenerateRequest):
     payload = {
         "model": OLLAMA_MODEL,
-        "messages": [
-            {"role": "system", "content": req.system_prompt},
-            {"role": "user", "content": req.user_text},
-        ],
+        "messages": _build_ollama_messages(req),
         "stream": False,
     }
+    # Qwen3 ships with thinking mode on by default — it emits a <think>...</think>
+    # block before the answer, which 2-3x latency and breaks downstream JSON parsing.
+    if OLLAMA_MODEL.startswith("qwen3"):
+        payload["think"] = False
     async with httpx.AsyncClient(timeout=120) as client:
         try:
             resp = await client.post(f"{OLLAMA_URL}/api/chat", json=payload)
@@ -65,12 +89,11 @@ async def generate(req: GenerateRequest):
 async def stream(req: GenerateRequest):
     payload = {
         "model": OLLAMA_MODEL,
-        "messages": [
-            {"role": "system", "content": req.system_prompt},
-            {"role": "user", "content": req.user_text},
-        ],
+        "messages": _build_ollama_messages(req),
         "stream": True,
     }
+    if OLLAMA_MODEL.startswith("qwen3"):
+        payload["think"] = False
 
     async def event_generator() -> AsyncGenerator[str, None]:
         async with httpx.AsyncClient(timeout=120) as client:
@@ -110,10 +133,9 @@ async def text_to_speech(req: TTSRequest):
         )
 
     voice = req.voice or TTS_VOICE
-    # Làm sạch text: bỏ ngoặc đơn (corrections), markdown
     text = req.text.strip()
-    text = re.sub(r'\([^)]*\)', '', text)   # bỏ (corrections in parentheses)
-    text = re.sub(r'[*_`#>]', '', text)     # bỏ markdown
+    text = re.sub(r'\([^)]*\)', '', text)
+    text = re.sub(r'[*_`#>]', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
 
     if not text:
@@ -148,3 +170,37 @@ async def list_voices():
         return {"voices": en_voices, "current": TTS_VOICE}
     except ImportError:
         raise HTTPException(status_code=501, detail="edge-tts not installed")
+
+
+@lru_cache(maxsize=1)
+def get_whisper_model():
+    """
+    Lazy-load faster-whisper. The first call downloads weights (~75MB for
+    tiny.en, ~150MB for base.en) and warms CTranslate2; subsequent calls
+    return the cached singleton. Override via FastAPI's dependency_overrides
+    in tests so the model isn't loaded for unit tests.
+    """
+    from faster_whisper import WhisperModel
+    model_name = os.getenv("WHISPER_MODEL", "tiny.en")
+    return WhisperModel(model_name, device="cpu", compute_type="int8")
+
+
+@app.post("/stt")
+async def speech_to_text(
+    audio: UploadFile = File(...),
+    model=Depends(get_whisper_model),
+):
+    """
+    Browser uploads a captured audio blob (any container faster-whisper can
+    decode via libav: webm/opus, wav, mp3, ogg). Returns the transcription so
+    the frontend doesn't depend on Chrome's cloud webkitSpeechRecognition.
+    """
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio payload")
+    try:
+        segments, info = model.transcribe(BytesIO(audio_bytes), beam_size=1)
+        text = "".join(s.text for s in segments).strip()
+        return {"text": text, "language": info.language, "duration": info.duration}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"STT error: {e}")

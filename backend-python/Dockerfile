@@ -17,10 +17,16 @@ RUN apt-get update \
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-# Drop privileges before copying app code.
+# Drop privileges before downloading model + copying app code.
 RUN useradd --create-home --shell /bin/sh app \
  && chown -R app:app /app
 USER app
+
+# Pre-download the Whisper weights into the app user's cache so the first
+# /stt request has no cold-start. tiny.en is ~75MB and is English-optimized;
+# override at runtime via the WHISPER_MODEL env var (e.g. base.en, small.en).
+ENV WHISPER_MODEL=tiny.en
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu', compute_type='int8')"
 
 COPY --chown=app:app main.py ./
 
