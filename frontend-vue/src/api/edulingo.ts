@@ -16,6 +16,10 @@ export interface ScenarioResponse {
   characterName: string
   characterRole: string
   characterAvatar: string
+  /** "ON" | "OFF" | "HINT" — drives whether the UI shows the suggestion chip strip */
+  suggestPolicy?: 'ON' | 'OFF' | 'HINT'
+  /** Populated in Phase 2 once the backend wires chat_session persistence; may be null today */
+  sessionId?: string | null
 }
 
 export interface CorrectionError {
@@ -72,12 +76,15 @@ export async function* streamReply(
   topicId: string,
   scenario: string,
   history: MessageItem[],
-  message: string
+  message: string,
+  sessionId?: string | null
 ): AsyncGenerator<string> {
+  const body: Record<string, unknown> = { topicId, scenario, history, message }
+  if (sessionId) body.sessionId = sessionId
   const res = await fetch('/api/chat/reply', {
     method: 'POST',
     headers: { ...headers(), Accept: 'text/event-stream' },
-    body: JSON.stringify({ topicId, scenario, history, message })
+    body: JSON.stringify(body)
   })
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
 

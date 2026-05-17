@@ -1,0 +1,49 @@
+id: environment_peer
+topic: environment
+cefr: A2
+description: 4-turn peer chat about everyday eco habits with Oliver.
+
+learner_inputs:
+  - "no this is first time. but i want help."
+  - "yes i use bottle. and i walk to school every day."
+  - "yes we have three boxes. paper plastic and food."
+  - "i want try shopping with own bag."
+
+per_turn:
+  - id: R1_valid_json
+    kind: deterministic
+    fn: valid_json
+
+  - id: R2_peer_voice_no_lecture
+    kind: behavioral
+    fn: regex_absent
+    args:
+      patterns:
+        - "you should"
+        - "you must"
+        - "it is important to"
+
+  - id: R3_no_abstract_policy_vocab
+    kind: behavioral
+    fn: regex_absent
+    args:
+      patterns:
+        - "sustainability"
+        - "carbon footprint"
+        - "biodiversity"
+        - "regulation"
+        - "mitigation"
+
+  - id: R4_T2_remembers_bottle_or_walking
+    kind: behavioral
+    only_turn: 2
+    fn: contains_any_in_reply
+    args: { needles: ["bottle", "walk", "walking"] }
+
+scratchpad:
+  - id: S1_topics_touched
+    fn: scratchpad_field_contains
+    args: { field: topicsTouched, needle: recycling }
+  - id: S2_has_rhythm_beat
+    fn: scratchpad_has_field
+    args: { field: rhythmBeat }
