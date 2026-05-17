@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getVocabularySet, toggleWordMastered, type VocabularyWord } from '../api/edulingo'
+import { LOCAL_AI_URL } from '../config/env'
 
 const router = useRouter()
 const route  = useRoute()
@@ -70,7 +71,7 @@ async function speakWord(word: string) {
   if (currentAudio) { currentAudio.pause(); currentAudio = null }
 
   try {
-    const res = await fetch('http://localhost:8000/tts', {
+    const res = await fetch(`${LOCAL_AI_URL}/tts`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ text: word, voice: 'en-US-JennyNeural' }),

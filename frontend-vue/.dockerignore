@@ -1,0 +1,17 @@
+.git
+.gitignore
+.idea
+.vscode
+node_modules/
+dist/
+.vite/
+.cache/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+# Note: Dockerfile and nginx.conf are NEEDED in the build context (COPY'd
+# into the image), so they are NOT excluded here.
+README.md
+*.log
+.DS_Store

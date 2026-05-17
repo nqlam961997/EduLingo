@@ -1,0 +1,155 @@
+# EduLingo — prod-style base compose.
+#
+# Runs identically on laptop (HTTP) and VPS (HTTPS).
+#   Laptop:  `cp .env.example .env && docker compose up -d`  →  http://localhost
+#   VPS:     set DOMAIN + secrets in .env, then same command  →  https://<DOMAIN>
+#
+# Override for dev (hot reload, source bind-mounts):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+name: edulingo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: edulingo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edulingo}
+      POSTGRES_USER: ${POSTGRES_USER:-edulingo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edulingo}
+    volumes:
+      - edulingo_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edulingo} -d ${POSTGRES_DB:-edulingo}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [edulingo-net]
+
+  ollama:
+    build:
+      context: ./ollama
+      dockerfile: Dockerfile
+    container_name: edulingo-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      # Healthy only once the configured model has been pulled and is listed.
+      # Uses `ollama list` because the official ollama image lacks curl/wget.
+      test:
+        - "CMD-SHELL"
+        - "ollama list 2>/dev/null | awk 'NR>1 {print $$1}' | grep -Fxq \"${OLLAMA_MODEL:-qwen2.5:3b}\" || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 80
+      start_period: 90s
+    networks: [edulingo-net]
+
+  ai-proxy:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: edulingo-ai-proxy
+    restart: unless-stopped
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      TTS_VOICE: ${TTS_VOICE:-en-US-JennyNeural}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [edulingo-net]
+
+  backend:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+    container_name: edulingo-backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-edulingo}
+      DB_USER: ${POSTGRES_USER:-edulingo}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-edulingo}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      AI_PROVIDER: ${AI_PROVIDER:-local}
+      LOCAL_AI_URL: http://ai-proxy:8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      # CORS_ORIGINS auto-derives to https://<DOMAIN> when DOMAIN set, else laptop defaults.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://localhost:5173,https://${DOMAIN:-localhost}}
+      DOMAIN: ${DOMAIN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks: [edulingo-net]
+
+  frontend:
+    build:
+      context: ./frontend-vue
+      dockerfile: Dockerfile
+      args:
+        VITE_LOCAL_AI_URL: ${VITE_LOCAL_AI_URL:-/ai}
+        VITE_LIVE2D_MODEL: ${VITE_LIVE2D_MODEL:-/models/haru/haru_greeter_t03.model3.json}
+    container_name: edulingo-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      ai-proxy:
+        condition: service_healthy
+    # Internal-only; Caddy is the public entrypoint.
+    expose:
+      - "80"
+    networks: [edulingo-net]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: edulingo-caddy
+    restart: unless-stopped
+    environment:
+      # When DOMAIN is set (e.g. "foo.example.com"), Caddy uses that as the
+      # site address and auto-provisions Let's Encrypt certs. When unset, the
+      # site address defaults to ":80" (plain HTTP on every interface).
+      SITE_ADDRESS: ${DOMAIN:-:80}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    depends_on:
+      frontend:
+        condition: service_started
+    networks: [edulingo-net]
+
+volumes:
+  edulingo_pg:
+  ollama_models:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edulingo-net:
+    driver: bridge
