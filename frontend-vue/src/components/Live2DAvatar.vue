@@ -33,7 +33,9 @@ const PARAM_BREATH     = 'ParamBreath'
 onMounted(async () => {
   if (!canvasRef.value) return
 
-  Live2DModel.registerTicker(PIXI.Ticker)
+  // pixi-live2d-display bundles its own @pixi/ticker copy; PIXI.Ticker is
+  // structurally identical at runtime but TypeScript sees two distinct types.
+  Live2DModel.registerTicker(PIXI.Ticker as any)
 
   // Lấy kích thước thực của container
   const container = canvasRef.value.parentElement!

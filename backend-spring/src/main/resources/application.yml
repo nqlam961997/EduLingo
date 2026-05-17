@@ -25,11 +25,20 @@ spring:
   codec:
     max-in-memory-size: 16MB
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 ai:
   provider: ${AI_PROVIDER:local} # local | openai | gemini
 
 gemini:
-  api-key: ${GEMINI_API_KEY:AIzaSyB3T-ABtU0Hp7EqRdSKJCU9VMelVqQlvT4}
+  api-key: ${GEMINI_API_KEY:}
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
   model: ${GEMINI_MODEL:gemini-2.5-flash-lite}
   image-model: ${GEMINI_IMAGE_MODEL:gemini-2.0-flash-exp}
@@ -49,3 +58,6 @@ jwt:
 
 cors:
   allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+deployment:
+  domain: ${DOMAIN:}

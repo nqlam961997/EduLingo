@@ -90,3 +90,8 @@ dump.sql
 *.temp
 *.bak
 Thumbs.db
+# OpenSpec change artifacts (openspec/) are tracked. Project-local Claude
+# Code config and OMC session state are kept out of the repo.
+.claude/
+.omc/
+docs/

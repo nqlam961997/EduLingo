@@ -2,6 +2,7 @@
 import { ref, nextTick, onUnmounted, defineAsyncComponent } from 'vue'
 import TopicPicker from '../components/TopicPicker.vue'
 import { startScenario, streamReply, recordSession, type Topic } from '../api/edulingo'
+import { LOCAL_AI_URL, LIVE2D_MODEL } from '../config/env'
 
 // Lazy load — lỗi Live2D không crash app chính
 const Live2DAvatar = defineAsyncComponent({
@@ -9,10 +10,6 @@ const Live2DAvatar = defineAsyncComponent({
   errorComponent: { template: '<div class="l2d-fallback">🤖</div>' },
   delay: 200,
 })
-
-const LOCAL_AI_URL = import.meta.env.VITE_LOCAL_AI_URL ?? 'http://localhost:8000'
-// Đường dẫn model — đặt file model3.json vào public/models/<folder>/
-const LIVE2D_MODEL = import.meta.env.VITE_LIVE2D_MODEL ?? '/models/haru/haru_greeter_t03.model3.json'
 
 interface Msg { role: 'user' | 'assistant'; text: string; suggestions?: string[] }
 

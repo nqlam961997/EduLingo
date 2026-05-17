@@ -6,8 +6,16 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8080'
-    }
+      // Spring Boot backend
+      '/api': 'http://localhost:8080',
+      // FastAPI ai-proxy (when running the Dockerized stack on port 80,
+      // these target localhost:8000 by default — adjust via env if needed)
+      '/ai': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/ai/, ''),
+      },
+    },
   },
   optimizeDeps: {
     include: [
